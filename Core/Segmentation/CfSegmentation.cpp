@@ -591,7 +591,7 @@ SegmentationResult CfSegmentation::performSegmentation(std::list<std::shared_ptr
   const std::string outputPath = "/tmp/maskfusion";
   const int minWrite = 2;
 
-  cv::Mat inputOverlay = showInputOverlay(frame.rgb, result.fullSegmentation);
+  cv::Mat inputOverlay = showInputOverlay(frame->rgb, result.fullSegmentation);
   if (writeOverlay) cv::imwrite(outputPath + "overlay" + std::to_string(CFRAME) + ".png", inputOverlay);
   if (writeSLIC) cv::imwrite(outputPath + "superpixel" + std::to_string(CFRAME) + ".png", slic.drawSurfelBorders(true));
 
@@ -618,7 +618,7 @@ SegmentationResult CfSegmentation::performSegmentation(std::list<std::shared_ptr
   if (writeUnaries)
     for (; i < minWrite; ++i)
       cv::imwrite(outputPath + "unaries" + std::to_string(i) + "-" + std::to_string(CFRAME) + ".png",
-                  slic.drawSurfelBorders(cv::Mat::zeros(frame.rgb.rows, frame.rgb.cols, CV_8UC3), false));
+                  slic.drawSurfelBorders(cv::Mat::zeros(frame->rgb.rows, frame->rgb.cols, CV_8UC3), false));
 
   i = 0;
   for (; i < result.modelData.size(); i++) {
@@ -630,7 +630,7 @@ SegmentationResult CfSegmentation::performSegmentation(std::list<std::shared_ptr
   for (; i < minWrite; ++i) {
     if (writeICP)
       cv::imwrite(outputPath + "ICP" + std::to_string(i) + "-" + std::to_string(CFRAME) + ".png",
-                  cv::Mat::zeros(frame.rgb.rows, frame.rgb.cols, CV_8UC3));
+                  cv::Mat::zeros(frame->rgb.rows, frame->rgb.cols, CV_8UC3));
   }
 
   cv::waitKey(1);

@@ -44,6 +44,8 @@ void MaskRCNN::initialise(){
     Py_Initialize();
     wchar_t const * argv2[] = { L"MaskRCNN.py" };
     PySys_SetArgv(1, const_cast<wchar_t**>(argv2));
+    //auto lxltxt1 = Py_GetPath();
+    //std::cout << "pypath " << lxltxt1 << " ..." << std::endl;
 
     // Load module
     loadModule();

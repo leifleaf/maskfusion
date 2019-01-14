@@ -19,9 +19,11 @@
 # To use this script, add the MaskRCNN directoy to your PYTHON_PATH
 import sys
 import os
+os.environ['CUDA_VISIBLE_DEVICES']='0'
 
-mask_rcnn_path = os.path.abspath("../../../deps/Mask_RCNN")
-sys.path.insert(0, mask_rcnn_path)
+mask_rcnn_path = os.path.abspath("/home/lxl/workp/segmt/Mask_RCNN")
+sys.path.insert(0, "/home/lxl/workp/segmt/Mask_RCNN")
+#sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')
 
 import random
 import math
@@ -31,6 +33,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import argparse
 from samples.coco import coco
+#import samples.coco.coco as coco
 from mrcnn import utils
 from mrcnn import model as modellib
 from mrcnn import visualize

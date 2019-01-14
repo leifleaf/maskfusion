@@ -83,7 +83,8 @@ void OpenNI2LiveReader::getNext() {
   currentDataPointer = data;
 }
 
-const std::string OpenNI2LiveReader::getFile() { return Parse::get().baseDir().append("live"); }
+//const std::string OpenNI2LiveReader::getFile() { return Parse::get().baseDir().append("live"); }
+const std::string OpenNI2LiveReader::getFile() { return "hhh" ;}
 
 FrameDataPointer OpenNI2LiveReader::getFrameData() { return currentDataPointer; }
 

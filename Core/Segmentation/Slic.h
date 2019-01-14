@@ -136,7 +136,8 @@ class Slic {
     assert(input.isContinuous());
     assert(input.total() == spixelNum);
 
-    cv::Mat result = cv::Mat(slicInput->noDims[1], slicInput->noDims[0], cv::DataType<Tout>::type);
+    //cv::Mat result = cv::Mat(slicInput->noDims[1], slicInput->noDims[0], cv::DataType<Tout>::type);
+    cv::Mat result = cv::Mat(slicInput->noDims[1], slicInput->noDims[0],CV_MAKETYPE(-1, 1));
     Tout* resData = (Tout*)result.data;
     Tin* inData = (Tin*)input.data;
 

@@ -64,8 +64,8 @@ MfSegmentation::MfSegmentation(int w, int h,
         rgb.create(h,w);
     }
 
-    segmentationMap = std::make_shared<GPUTexture>(w, h, GL_R32F, GL_RED, GL_FLOAT, false, true, cudaGraphicsRegisterFlagsSurfaceLoadStore);
-    //debugMap = std::make_shared<GPUTexture>(w, h, GL_R32F, GL_RED, GL_FLOAT, true, true, cudaGraphicsRegisterFlagsSurfaceLoadStore);
+    segmentationMap = std::make_shared<GPUTexture>(w, h, GL_R32F, GL_RED, GL_FLOAT, true, true, cudaGraphicsRegisterFlagsSurfaceLoadStore);
+    debugMap = std::make_shared<GPUTexture>(w, h, GL_R32F, GL_RED, GL_FLOAT, true, true, cudaGraphicsRegisterFlagsSurfaceLoadStore);
     allocateModelBuffers(5);
     maskToID[255] = 255; // Ignored
     maskToID[0] = 0; // Background
@@ -85,7 +85,7 @@ SegmentationResult MfSegmentation::performSegmentation(std::list<std::shared_ptr
                                                            unsigned char nextModelID,
                                                            bool allowNew){
     TICK("segmentation");
-#ifdef SHOW_DEBUG_VISUALISATION
+//#ifdef SHOW_DEBUG_VISUALISATION
     const unsigned char colors[31][3] = {
         {0, 0, 0},     {0, 0, 255},     {255, 0, 0},   {0, 255, 0},     {255, 26, 184},  {255, 211, 0},   {0, 131, 246},  {0, 140, 70},
         {167, 96, 61}, {79, 0, 105},    {0, 255, 246}, {61, 123, 140},  {237, 167, 255}, {211, 255, 149}, {184, 79, 255}, {228, 26, 87},
@@ -123,7 +123,7 @@ SegmentationResult MfSegmentation::performSegmentation(std::list<std::shared_ptr
         cv::imshow("maskrcnn", overlayMask(frame->rgb, frame->mask));
         cv::waitKey(1);
     }
-#endif
+//#endif
 
     if(frame->mask.total() == 0) {
         if(!maskRCNN) throw std::runtime_error("MaskRCNN is not embedded and no masks were pre-computed.");
@@ -143,7 +143,7 @@ SegmentationResult MfSegmentation::performSegmentation(std::list<std::shared_ptr
     const int nModels = int(models.size());
 
     // Prepare data (vertex/depth/... maps)
-    TICK("segmentation-geom");
+    TICK("segmentation-geom");//进行几何分割
     if(REUSE_FILTERED_MAPS){
         Model::GPUSetup& gpu = Model::GPUSetup::getInstance();
         computeGeometricSegmentationMap(gpu.vertex_map_tmp[0], gpu.normal_map_tmp[0], floatEdgeMap, weightDistance, weightConvexity);
@@ -151,7 +151,7 @@ SegmentationResult MfSegmentation::performSegmentation(std::list<std::shared_ptr
         computeLookups();
         computeGeometricSegmentationMap(vertexMap, normalMap, floatEdgeMap, weightDistance, weightConvexity);
     }
-    TICK("segmentation-geom");
+    TOCK("segmentation-geom");
 
     // Prepare per model data (ICP texture, conf texture...)
     allocateModelBuffers(nModels+1);
@@ -169,7 +169,7 @@ SegmentationResult MfSegmentation::performSegmentation(std::list<std::shared_ptr
     // TODO: Also fix "downloadDirect"
     //cv::Mat projectedDepth = globalProjection->getProjectedDepth(); // TODO remove and perform relevant steps directly on the GPU, this can save time!
 
-    TICK("segmentation-DL");
+    TICK("segmentation-DL");//给结果里加上模型参数？
     for (unsigned char m = 0; m < models.size(); ++m,++modelItr) {
         ModelBuffers& mBuffers = modelBuffers[m];
         auto& model = *modelItr;
@@ -191,17 +191,17 @@ SegmentationResult MfSegmentation::performSegmentation(std::list<std::shared_ptr
 
     // Perform geometric segmentation
 
-    TICK("segmentation-geom-post");
+    TICK("segmentation-geom-post");//优化几何分割结果,并产生人体遮照
     DeviceArray2D<float>& edgeMap = floatEdgeMap;
 
     // Copy edge-map to segmentationMap for visualisation
     cudaArray* segmentationMapPtr = segmentationMap->getCudaArray();
     cudaMemcpy2DToArray(segmentationMapPtr, 0, 0, edgeMap.ptr(), edgeMap.step(), edgeMap.colsBytes(), edgeMap.rows(), cudaMemcpyDeviceToDevice);
 
-    thresholdMap(edgeMap, binaryEdgeMap, threshold);
-    morphGeometricSegmentationMap(binaryEdgeMap,ucharBuffer, morphEdgeRadius, morphEdgeIterations);
-    invertMap(binaryEdgeMap,ucharBuffer);
-    ucharBuffer.download(cv8UC1Buffer.data, ucharBuffer.cols());
+    thresholdMap(edgeMap, binaryEdgeMap, threshold);//二值化
+    morphGeometricSegmentationMap(binaryEdgeMap,ucharBuffer, morphEdgeRadius, morphEdgeIterations);//膨胀腐蚀
+    invertMap(binaryEdgeMap,ucharBuffer);//反色
+    ucharBuffer.download(cv8UC1Buffer.data, ucharBuffer.cols());//几何分割结果在cv8?
 
 #ifdef SHOW_DEBUG_VISUALISATION
     cv::Mat vis(480,640,CV_8UC3);
@@ -235,7 +235,7 @@ SegmentationResult MfSegmentation::performSegmentation(std::list<std::shared_ptr
     int nComponents = cv::connectedComponentsWithStats(cv8UC1Buffer, cvLabelComps, statsComp, centroidsComp, 4);
     TOCK("segmentation-geom-post");
 
-    // Todo, this can be faster! (GPU?)
+    // Todo, this can be faster! (GPU?)   //相当于去掉了小块并做了一次边的膨胀
     if(removeEdges){
         const bool remove_small_components = true;
         const int small_components_threshold = 50;
@@ -291,7 +291,7 @@ SegmentationResult MfSegmentation::performSegmentation(std::list<std::shared_ptr
 #endif
 
     // Assign mask to each component
-    TICK("segmentation-assign");
+    TICK("segmentation-assign");//
     std::vector<int> mapComponentToMask(nComponents, 0); // By default, components are mapped to background (maskid==0)
     std::vector<int> maskComponentPixels(nMasks, 0); // Number of pixels per mask
     std::vector<BoundingBox> maskComponentBoxes(nMasks);
@@ -339,14 +339,17 @@ SegmentationResult MfSegmentation::performSegmentation(std::list<std::shared_ptr
                 mapComponentToMask[c] = 0;
             }
         }
-    }
-
-    // Replace edges and persons with 255
+        
+        // Replace edges and persons with 255
 //    mapComponentToMask[0] = 255; // Edges
 
-    // Group components that belong to the same mask
-    for (size_t i = 0; i < total; ++i)
-        result.fullSegmentation.data[i] = mapComponentToMask[cvLabelComps.at<int>(i)];
+        // Group components that belong to the same mask
+        for ( size_t i = 0; i < total; ++i )
+            result.fullSegmentation.data[i] = mapComponentToMask[cvLabelComps.at<int> ( i )];
+        
+    }
+
+
     TOCK("segmentation-assign");
 
     // FIX HACK
@@ -498,7 +501,7 @@ SegmentationResult MfSegmentation::performSegmentation(std::list<std::shared_ptr
     for (size_t i = 0; i < total; ++i)
         result.fullSegmentation.data[i] = maskToID[result.fullSegmentation.data[i]];
 
-    // Try to map unused components to existing models
+    // Try to map unused components to existing models//为没有mask的区域分配标记
     if(true){
         int model, overlap;
         for (int c = 1; c < nComponents; ++c) {
@@ -540,7 +543,7 @@ SegmentationResult MfSegmentation::performSegmentation(std::list<std::shared_ptr
 std::vector<std::pair<std::string, std::shared_ptr<GPUTexture> > > MfSegmentation::getDrawableTextures(){
     return {
         { "BifoldSegmentation", segmentationMap },
-        //{ "DebugMap", debugMap }
+        { "DebugMap", debugMap }
     };
 }
 

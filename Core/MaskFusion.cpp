@@ -88,6 +88,7 @@ MaskFusion::MaskFusion(int timeDelta, int countThresh, float errThresh, float co
     // Select GPU and print GPU info, as detected by OpenCV
     int gpuSlam = MASKFUSION_GPU_SLAM;
     if (gpuSlam >= 0) cudaSetDevice(gpuSlam);
+    
 #if 0
     if (cv::ocl::haveOpenCL()){
         cv::ocl::Context context;
@@ -207,6 +208,7 @@ bool MaskFusion::processFrame(FrameDataPointer frame, const Eigen::Matrix4f* inP
     if(frameQueue.size() < queueLength) return 0;
     frame = frameQueue.front();
     frameQueue.pop();
+
 
     // Upload RGB to graphics card
     textureRGB->texture->Upload(frame->rgb.data, GL_RGB, GL_UNSIGNED_BYTE);

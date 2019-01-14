@@ -44,7 +44,7 @@
 
 class MaskFusion {
  public:
-  MaskFusion(int timeDelta = 200, int countThresh = 35000, float errThresh = 5e-05, float covThresh = 1e-05,
+ MaskFusion(int timeDelta = 200, int countThresh = 35000, float errThresh = 5e-05, float covThresh = 1e-05,
            bool closeLoops = true, bool iclnuim = false, bool reloc = false, float photoThresh = 115,
            float initConfidenceGlobal = 4, float initConfidenceObject = 2, float depthCut = 3, float icpThresh = 10,
            bool fastOdom = false, float fernThresh = 0.3095, bool so3 = true, bool frameToFrameRGB = false,

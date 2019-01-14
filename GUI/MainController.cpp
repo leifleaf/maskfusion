@@ -98,6 +98,8 @@
 MainController::MainController(int argc, char* argv[])
     : good(true), maskFusion(0), gui(0), groundTruthOdometry(0), logReader(nullptr), usePrecomputedMasksOnly(false), framesToSkip(0), resetButton(false), resizeStream(0) {
 
+        
+    cudaSetDevice(2);
     // Tmp variables for parameter parsing
     std::string tmpString;
     float tmpFloat;
@@ -479,7 +481,9 @@ void MainController::run() {
 
                 if (frameskip && Stopwatch::getInstance().getTimings().at("Run") > 1000.f / 30.f) {
                     framesToSkip = int(Stopwatch::getInstance().getTimings().at("Run") / (1000.f / 30.f));
+		    
                 }
+                Stopwatch::getInstance().printAll();
             }
         } else if (pangolin::Pushed(*gui->skip)) {
             maskFusion->setTick(maskFusion->getTick() + 1);

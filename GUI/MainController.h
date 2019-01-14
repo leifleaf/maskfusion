@@ -73,3 +73,4 @@ class MainController {
 
   GPUResize* resizeStream;
 };
+

@@ -35,7 +35,7 @@ include_directories(${Boost_INCLUDE_DIRS})
 link_directories(${Boost_LIBRARY_DIRS})
 
 # gSLICr
-set(GSLICR_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps/gSLICr")
+set(GSLICR_DIR "~/workp/gSLICr")
 include_directories(${GSLICR_DIR}/gSLICr_Lib)
 link_directories(${GSLICR_DIR}/build)
 

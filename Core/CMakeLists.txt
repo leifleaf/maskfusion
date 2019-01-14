@@ -6,17 +6,28 @@ cmake_policy(SET CMP0022 OLD)
 project(libmaskfusion)
 
 message("Evaluating Core/CMAKE")
+ 
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}")
+
+#set(MY_INCLUDE_DIR "/home/lxl/anaconda3/envs/env1/include")
+#SET(MY_LIB_DIR "/home/lxl/anaconda3/envs/env1/lib")
+#include_directories(${MY_INCLUDE_DIR})
+#link_directories(${MY_LIB_DIR})
+#set(LIBPROTOS "/usr/local/lib/libprotobuf.so;/usr/local/lib/libprotobuf-lite.so;/usr/local/lib/libprotoc.so")
+set(PYTHON_LIBRARIES "/home/lxl/anaconda3/envs/env1/lib/libpython3.6m.so")
+set(PYTHON_INCLUDE_DIRS "/home/lxl/anaconda3/envs/env1/include/python3.6m")
+include_directories(${PYTHON_INCLUDE_DIRS})
 
 ## External packages
 find_package(CUDA REQUIRED)
 find_package(SuiteSparse REQUIRED)
 find_package(OpenCV 3.1 REQUIRED)
 find_package(OpenMP)
-find_package(PythonLibs)
+#find_package(PythonLibs)
 
-set(MASKFUSION_MASK_RCNN_DIR ${CMAKE_SOURCE_DIR}/deps/Mask_RCNN CACHE STRING "Location of MaskRCNN")
+message(STATUS "hhhhhddddd0")
+set(MASKFUSION_MASK_RCNN_DIR /home/lxl/workp/segmt/Mask_RCNN CACHE STRING "Location of MaskRCNN")
 set(MASKFUSION_PYTHON_VE_PATH "" CACHE STRING "Python virtual environment to use")
 configure_file("Segmentation/MaskRCNN/MaskRCNN.py.in" "${CMAKE_CURRENT_BINARY_DIR}/../GUI/MaskRCNN.py")
 configure_file("Segmentation/MaskRCNN/helpers.py" "${CMAKE_CURRENT_BINARY_DIR}/../GUI/helpers.py")
@@ -43,11 +54,14 @@ if(SHOW_DEBUG_VISUALISATION)
 endif()
 
 ## Directories
-set(DENSECRF_DIR "${CMAKE_SOURCE_DIR}/deps/densecrf")
+set(DENSECRF_DIR "~/workp/densecrf")
 set(DENSECRF_LIBRARY_DIRS "${DENSECRF_DIR}/build/src/")
 set(DENSECRF_INCLUDE_DIRS "${DENSECRF_DIR}/include")
 set(DENSECRF_LIBRARIES densecrf)
 set(maskfusion_SHADER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Shaders" CACHE PATH "Where the shaders live")
+
+ 
+
 
 message("Using: ")
 message("=======")
@@ -116,6 +130,7 @@ add_library(${PROJECT_NAME} SHARED
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC
+#                            ${MY_INCLUDE_DIR}
                             ${CMAKE_CURRENT_SOURCE_DIR}
                             ${GSLICR_DIR}/gSLICr_Lib
                             ${ZLIB_INCLUDE_DIR}
@@ -127,7 +142,10 @@ target_include_directories(${PROJECT_NAME} PUBLIC
                             ${PYTHON_INCLUDE_DIRS}
 )
 
+
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
+  #                    ${LIBPROTOS}
                       ${DENSECRF_LIBRARIES}
                       ${Eigen_LIBRARIES}
                       ${Pangolin_LIBRARIES}

@@ -28,12 +28,14 @@ if PYTHON_VE_PATH != "":
   exec(open(ve_path).read(), {'__file__': ve_path})
 
 ## Optionally, select GPU # this approach did not work
-#if "@MASKFUSION_GPUS_MASKRCNN@" != "":
-#  os.environ["CUDA_VISIBLE_DEVICES"] = "@MASKFUSION_GPUS_MASKRCNN@"
-#  os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+if "@MASKFUSION_GPUS_MASKRCNN@" != "":
+  os.environ["CUDA_VISIBLE_DEVICES"] = "@MASKFUSION_GPUS_MASKRCNN@"
+  os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 
 import sys
-sys.path.insert(0, MASK_RCNN_DIR)
+#sys.path.insert(0, MASK_RCNN_DIR)
+sys.path.insert(0, "/home/lxl/workp/segmt/Mask_RCNN")
+#sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')
 
 import random
 import math
@@ -69,7 +71,7 @@ COCO_MODEL_PATH = os.path.join(DATA_DIR, "mask_rcnn_coco.h5")
 
 # PARAMETERS
 SCORE_T = 0.55
-FILTER_CLASSES = ['teddy bear']
+FILTER_CLASSES = ['teddy bear','person']
 SPECIAL_ASSIGNMENTS = {} #{'person': 255}
 SINGLE_INSTANCES = False
 OUTPUT_FRAMES = True

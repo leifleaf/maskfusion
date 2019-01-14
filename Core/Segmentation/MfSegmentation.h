@@ -93,7 +93,7 @@ public:
   // Buffers for output / visualisation
   //DeviceArray2D<float> segmentationMap;
   std::shared_ptr<GPUTexture> segmentationMap;
-  //std::shared_ptr<GPUTexture> debugMap;
+  std::shared_ptr<GPUTexture> debugMap;
 
   // CPU buffers for internal use
   cv::Mat cv8UC1Buffer;

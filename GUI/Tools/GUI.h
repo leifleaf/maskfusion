@@ -138,7 +138,7 @@ class GUI {
 
     // 1. row of textures
     pangolin::Display("multi-textures1")
-            .SetBounds(heightTextures, 2 * heightTextures, pangolin::Attach::Pix(180), 1 - widthPlots)
+            .SetBounds(heightTextures, 2 * heightTextures, pangolin::Attach::Pix(widthPanel), 1 - widthPlots) //180
             .SetLayout(pangolin::LayoutEqualHorizontal)
             .AddDisplay(pangolin::Display("P1"))
             .AddDisplay(pangolin::Display("P2"))
@@ -147,7 +147,7 @@ class GUI {
 
     // 2. row of textures
     pangolin::Display("multi-textures2")
-            .SetBounds(0.0, heightTextures, pangolin::Attach::Pix(180), 1 - widthPlots)
+            .SetBounds(0.0, heightTextures, pangolin::Attach::Pix(widthPanel), 1 - widthPlots)
             .SetLayout(pangolin::LayoutEqualHorizontal)
             .AddDisplay(pangolin::Display("ICP1"))
             .AddDisplay(pangolin::Display("ICP2"))
