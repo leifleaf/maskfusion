@@ -89,8 +89,8 @@ FrameDataPointer KlgLogReader::readFrame() {
 }
 
 void KlgLogReader::fastForward(int frame) {
-    assert(0 && "not yet implemented");
-//  while (currentFrame < frame && hasMore()) {
+  //  assert(0 && "not yet implemented");
+  while (currentFrame < frame && hasMore()) {
 //    filePointers.push(ftell(fp));
 
 //    CHECK_THROW(fread(&data.timestamp, sizeof(int64_t), 1, fp));
@@ -103,9 +103,9 @@ void KlgLogReader::fastForward(int frame) {
 //    if (rgbImageSize > 0) {
 //      CHECK_THROW(fread(rgbBuffer.data, rgbImageSize, 1, fp));
 //    }
-
-//    currentFrame++;
-//  }
+    getNext();
+    currentFrame++;
+  }
 }
 
 int KlgLogReader::getNumFrames() { return numFrames; }

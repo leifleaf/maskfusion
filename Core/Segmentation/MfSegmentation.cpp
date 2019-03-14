@@ -14,7 +14,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
 #include "MfSegmentation.h"
 #include "GPUTexture.h"
 #include "Model/Model.h"
@@ -52,17 +51,19 @@ MfSegmentation::MfSegmentation(int w, int h,
     cvLabelComps.create(h, w, CV_32S);
     cvLabelEdges.create(h, w, CV_32S);
     semanticIgnoreMap = cv::Mat::zeros(h, w, CV_8UC1);
-
+//LXL
+    this->textureRGB = textureRGB;
+    rgb.create(h,w);
+    
     if(!REUSE_FILTERED_MAPS){
         this->textureDepthMetric = textureDepthMetric;
-        this->textureRGB = textureRGB;
+        
         this->cameraIntrinsics = cameraIntrinsics;
         vertexMap.create(h*3,w);
         normalMap.create(h*3,w);
         depthMapMetric.create(h,w);
         depthMapMetricFiltered.create(h,w);
-        rgb.create(h,w);
-    }
+    } 
 
     segmentationMap = std::make_shared<GPUTexture>(w, h, GL_R32F, GL_RED, GL_FLOAT, true, true, cudaGraphicsRegisterFlagsSurfaceLoadStore);
     debugMap = std::make_shared<GPUTexture>(w, h, GL_R32F, GL_RED, GL_FLOAT, true, true, cudaGraphicsRegisterFlagsSurfaceLoadStore);
@@ -76,6 +77,8 @@ MfSegmentation::MfSegmentation(int w, int h,
     }
 
     this->globalProjection = globalProjection;
+    
+    g_maskcount = 0;
 }
 
 MfSegmentation::~MfSegmentation(){}
@@ -85,7 +88,7 @@ SegmentationResult MfSegmentation::performSegmentation(std::list<std::shared_ptr
                                                            unsigned char nextModelID,
                                                            bool allowNew){
     TICK("segmentation");
-//#ifdef SHOW_DEBUG_VISUALISATION
+#ifdef SHOW_DEBUG_VISUALISATION
     const unsigned char colors[31][3] = {
         {0, 0, 0},     {0, 0, 255},     {255, 0, 0},   {0, 255, 0},     {255, 26, 184},  {255, 211, 0},   {0, 131, 246},  {0, 140, 70},
         {167, 96, 61}, {79, 0, 105},    {0, 255, 246}, {61, 123, 140},  {237, 167, 255}, {211, 255, 149}, {184, 79, 255}, {228, 26, 87},
@@ -120,10 +123,13 @@ SegmentationResult MfSegmentation::performSegmentation(std::list<std::shared_ptr
         return vis;
     };
     if(frame->mask.total()) {
+        g_maskcount++;
         cv::imshow("maskrcnn", overlayMask(frame->rgb, frame->mask));
         cv::waitKey(1);
     }
-//#endif
+#endif
+    cv::imshow("orgin",frame->rgb);
+    cv::waitKey(1);
 
     if(frame->mask.total() == 0) {
         if(!maskRCNN) throw std::runtime_error("MaskRCNN is not embedded and no masks were pre-computed.");
@@ -143,13 +149,19 @@ SegmentationResult MfSegmentation::performSegmentation(std::list<std::shared_ptr
     const int nModels = int(models.size());
 
     // Prepare data (vertex/depth/... maps)
-    TICK("segmentation-geom");//进行几何分割
+    TICK("segmentation-geom");//进行几何分割(ffffffffffff)
     if(REUSE_FILTERED_MAPS){
         Model::GPUSetup& gpu = Model::GPUSetup::getInstance();
-        computeGeometricSegmentationMap(gpu.vertex_map_tmp[0], gpu.normal_map_tmp[0], floatEdgeMap, weightDistance, weightConvexity);
+        
+        textureRGB->cudaMap();
+        cudaArray* rgbTexturePtr = textureRGB->getCudaArray();
+        cudaMemcpy2DFromArray(rgb.ptr(0), rgb.step(), rgbTexturePtr, 0, 0, rgb.colsBytes(), rgb.rows(), cudaMemcpyDeviceToDevice);
+        textureRGB->cudaUnmap();
+        
+        computeGeometricSegmentationMap(gpu.vertex_map_tmp[0], gpu.normal_map_tmp[0], rgb,floatEdgeMap, weightDistance, weightConvexity,weightBit);
     } else {
         computeLookups();
-        computeGeometricSegmentationMap(vertexMap, normalMap, floatEdgeMap, weightDistance, weightConvexity);
+        computeGeometricSegmentationMap(vertexMap, normalMap,rgb, floatEdgeMap, weightDistance, weightConvexity,weightBit);
     }
     TOCK("segmentation-geom");
 
@@ -161,6 +173,7 @@ SegmentationResult MfSegmentation::performSegmentation(std::list<std::shared_ptr
 #ifdef SHOW_DEBUG_VISUALISATION
     static int DV_CNT = 0;
     cv::imshow( "Projected IDs", mapLabelToColorImage(projectedIDs) );
+    cv::waitKey(1);
 #endif
 #ifdef WRITE_MASK_FILES
     cv::imwrite(WRITE_MASK_DIR + "projected-label" + std::to_string(frame->index) + ".png", projectedIDs);
@@ -169,7 +182,7 @@ SegmentationResult MfSegmentation::performSegmentation(std::list<std::shared_ptr
     // TODO: Also fix "downloadDirect"
     //cv::Mat projectedDepth = globalProjection->getProjectedDepth(); // TODO remove and perform relevant steps directly on the GPU, this can save time!
 
-    TICK("segmentation-DL");//给结果里加上模型参数？
+    TICK("segmentation-DL");//vfgg
     for (unsigned char m = 0; m < models.size(); ++m,++modelItr) {
         ModelBuffers& mBuffers = modelBuffers[m];
         auto& model = *modelItr;
@@ -190,6 +203,7 @@ SegmentationResult MfSegmentation::performSegmentation(std::list<std::shared_ptr
     TOCK("segmentation-DL");
 
     // Perform geometric segmentation
+    
 
     TICK("segmentation-geom-post");//优化几何分割结果,并产生人体遮照
     DeviceArray2D<float>& edgeMap = floatEdgeMap;
@@ -204,12 +218,13 @@ SegmentationResult MfSegmentation::performSegmentation(std::list<std::shared_ptr
     ucharBuffer.download(cv8UC1Buffer.data, ucharBuffer.cols());//几何分割结果在cv8?
 
 #ifdef SHOW_DEBUG_VISUALISATION
-    cv::Mat vis(480,640,CV_8UC3);
-    for (int i = 0; i < 640*480; ++i) {
+    cv::Mat vis(height,width,CV_8UC3);
+    for (int i = 0; i < total; ++i) {
         float f = cv8UC1Buffer.data[i] / 255.0f;
         vis.at<cv::Vec3b>(i) = f * cv::Vec3b(255,255,255) + (1-f) * cv::Vec3b(0,0,255);
     }
-    cv::imshow("Geometric edges", vis);
+    //cv::imshow("Geometric edges", vis);
+    cv::imshow("Geometric edges", cv8UC1Buffer);
     cv::waitKey(1);
 #endif
 
@@ -223,8 +238,11 @@ SegmentationResult MfSegmentation::performSegmentation(std::list<std::shared_ptr
                 semanticIgnoreMap.data[i] = 0;
             }
         }
+        cv::imshow("Geometric edges2", cv8UC1Buffer);
+        cv::waitKey(1);
         //cv::compare(frame->mask, cv::Scalar(...), semanticIgnoreMap, CV_CMP_EQ);
     } else {
+        //TODO:lxl change it by time 
         for(size_t i=0; i<total; i++){
             if(semanticIgnoreMap.data[i]) cv8UC1Buffer.data[i] = 0;
         }
@@ -427,7 +445,7 @@ SegmentationResult MfSegmentation::performSegmentation(std::list<std::shared_ptr
         cv::morphologyEx(result.fullSegmentation, result.fullSegmentation, cv::MORPH_CLOSE, element, cv::Point(-1,-1), morphMaskIterations);
 
 #ifdef SHOW_DEBUG_VISUALISATION
-        cv::imshow( "Before model assignment", mapLabelToColorImage(result.fullSegmentation) );
+        cv::imshow("Before model assignment", mapLabelToColorImage(result.fullSegmentation) );
 #endif
 
         // Try mapping masks to models
@@ -446,7 +464,7 @@ SegmentationResult MfSegmentation::performSegmentation(std::list<std::shared_ptr
             const unsigned char mask = result.fullSegmentation.data[i];
             for (unsigned char b = 0; b < models.size(); ++b)
                 //if (modelBuffers[b].vertConfMap.at<float>(4*i+3) > 0) modelBuffers[b].maskOverlap[mask]++;
-                if(projectedIDs.data[i]==modelBuffers[b].modelID) modelBuffers[b].maskOverlap[mask]++;
+                if(projectedIDs.data[i]==modelBuffers[b].modelID) modelBuffers[b].maskOverlap[mask]++;//oldmask*newmask
         }
 
         // Find best match to model, for each mask
@@ -525,8 +543,8 @@ SegmentationResult MfSegmentation::performSegmentation(std::list<std::shared_ptr
     }
 
 
-    //cv::imshow("output", overlayMask(frame->rgb, result.fullSegmentation));
-    //cv::waitKey(1);
+    cv::imshow("output", overlayMask(frame->rgb, result.fullSegmentation));
+    cv::waitKey(1);
 
     cudaDeviceSynchronize();
     TOCK("segmentation-finalize");

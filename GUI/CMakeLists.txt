@@ -30,6 +30,7 @@ endif()
 
 include_directories(${ZLIB_INCLUDE_DIR})
 include_directories(${EIGEN_INCLUDE_DIRS})
+#message(STATUS "hh" ${EIGEN_INCLUDE_DIRS})
 include_directories(${CUDA_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../Core)
 include_directories(${OPENNI2_INCLUDE_DIR})

@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "globtest.h"
+
 #include "../Cuda/containers/device_array.hpp"
 #include "../Cuda/types.cuh"
 #include "../FrameData.h"
@@ -38,6 +40,7 @@ class GlobalProjection;
 class MfSegmentation : public SegmentationPerformer {
 public:
 
+  
  // Parameters
   float bilatSigmaDepth = 3;
   float bilatSigmaColor = 8;
@@ -48,6 +51,7 @@ public:
   float threshold = 0.1;
   float weightConvexity = 1;
   float weightDistance = 1;
+  float weightBit =1;
   int morphEdgeIterations = 3;
   int morphEdgeRadius = 1;
   int morphMaskIterations = 3;

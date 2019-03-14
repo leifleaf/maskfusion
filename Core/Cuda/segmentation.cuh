@@ -27,9 +27,10 @@
 
 void computeGeometricSegmentationMap(const DeviceArray2D<float> vmap,
                                      const DeviceArray2D<float> nmap,
+                                     const PtrStepSz<uchar4> inputRGBA,
                                      const DeviceArray2D<float> output,
                                      //const DeviceArray2D<unsigned char> output,
-                                     float wD, float wC);
+                                     float wD, float wC, float wB);
 
 void thresholdMap(const DeviceArray2D<float> input,
                   const DeviceArray2D<unsigned char> output,

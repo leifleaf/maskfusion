@@ -117,18 +117,30 @@ __device__ float getDistanceTerm(int w, int h, const PtrStepSz<float> vmap, cons
     return fabs(dot(d, n));
 }
 
+__device__ float getColorTerm(int w, int h, const PtrStepSz<uchar4> inputRGBA, const unsigned char& ix, const unsigned char& iy, const unsigned char& iz,int x_n, int y_n) {
+     
+//     float color_diff = (inputRGBA.ptr(y_n)[x_n].x - ix) * (inputRGBA.ptr(y_n)[x_n].x - ix) +
+//                     (inputRGBA.ptr(y_n)[x_n].y - iy) * (inputRGBA.ptr(y_n)[x_n].y - iy) +
+//                     (inputRGBA.ptr(y_n)[x_n].z - iz) * (inputRGBA.ptr(y_n)[x_n].z - iz);
+     
+    float color_diff = abs(inputRGBA.ptr(y_n)[x_n].x - ix) +
+                    abs(inputRGBA.ptr(y_n)[x_n].y - iy)  +
+                    abs(inputRGBA.ptr(y_n)[x_n].z - iz) ;                
+    return color_diff;
+}
 //__global__ void computeGeometricSegmentation_Kernel(int w, int h, const PtrStepSz<float> vmap, const PtrStepSz<float> nmap, cudaSurfaceObject_t output, float threshold)
 //__global__ void computeGeometricSegmentation_Kernel(int w, int h, const PtrStepSz<float> vmap, const PtrStepSz<float> nmap, PtrStepSz<unsigned char> output, float threshold){
 __global__ void computeGeometricSegmentation_Kernel(int w, int h,
                                                     const PtrStepSz<float> vmap,
                                                     const PtrStepSz<float> nmap,
+                                                    const PtrStepSz<uchar4> inputRGBA,
                                                     PtrStepSz<float> output,
-                                                    float wD, float wC){
+                                                    float wD, float wC ,float wB){
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
     if (y >= h || x >= w) return;
 
-    const int radius = 1;
+    const int radius = 2;
     if (x < radius || x >= w-radius || y < radius || y >= h-radius){
         //surf2Dwrite(1.0f, output, x_out, y);
         output.ptr(y)[x] = 1.0f;
@@ -170,8 +182,24 @@ __global__ void computeGeometricSegmentation_Kernel(int w, int h,
     d = fmax(getDistanceTerm(w, h, vmap, v, n, x+radius, y+radius), d);
     d *= wD;
 
-    float edgeness = max(c,d);
-
+    const unsigned char ix = inputRGBA.ptr(y)[x].x;
+    const unsigned char iy = inputRGBA.ptr(y)[x].y;
+    const unsigned char iz = inputRGBA.ptr(y)[x].z;
+    
+    float b = 0.0f;
+    b= fmax(getColorTerm(w,h,inputRGBA,ix,iy,iz,x-radius,y-radius),b);
+    b= fmax(getColorTerm(w,h,inputRGBA,ix,iy,iz,x,y-radius),b);
+    b= fmax(getColorTerm(w,h,inputRGBA,ix,iy,iz,x+radius,y-radius),b);
+    b= fmax(getColorTerm(w,h,inputRGBA,ix,iy,iz,x-radius,y),b);
+    b= fmax(getColorTerm(w,h,inputRGBA,ix,iy,iz,x+radius,y),b);
+    b= fmax(getColorTerm(w,h,inputRGBA,ix,iy,iz,x-radius,y+radius),b);
+    b= fmax(getColorTerm(w,h,inputRGBA,ix,iy,iz,x,y+radius),b);
+    b= fmax(getColorTerm(w,h,inputRGBA,ix,iy,iz,x+radius,y+radius),b);
+    b *=wB;
+    
+    
+    //float edgeness = max(c,d);
+    float edgeness = (c+d)*(1+b);
     //surf2Dwrite(edgeness, output, x_out, y);
     output.ptr(y)[x] = fmin(1.0f, edgeness);
 }
@@ -276,8 +304,9 @@ __global__ void invert_Kernel(const PtrStepSz<unsigned char> input, PtrStepSz<un
 
 void computeGeometricSegmentationMap(const DeviceArray2D<float> vmap,
                                      const DeviceArray2D<float> nmap,
+                                     const PtrStepSz<uchar4> inputRGBA,
                                      const DeviceArray2D<float> output,
-                                     float wD, float wC){
+                                     float wD, float wC, float wB){
     const int w = vmap.cols();
     const int h = vmap.rows() / 3;
     dim3 block (32, 8);
@@ -285,7 +314,7 @@ void computeGeometricSegmentationMap(const DeviceArray2D<float> vmap,
     grid.x = getGridDim (w, block.x);
     grid.y = getGridDim (h, block.y);
     //std::cout << "Running block, info: " << grid.x << " " << grid.y << " - wh: " << w << " " << h << std::endl;
-    computeGeometricSegmentation_Kernel<<<grid, block>>>(w, h, vmap, nmap, output, wD, wC);
+    computeGeometricSegmentation_Kernel<<<grid, block>>>(w, h, vmap, nmap,inputRGBA, output, wD, wC,wB);
 
     cudaCheckError();
     cudaSafeCall (cudaDeviceSynchronize ());

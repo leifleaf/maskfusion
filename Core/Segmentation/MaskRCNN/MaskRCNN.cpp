@@ -198,6 +198,8 @@ void MaskRCNN::loop(){
                 //std::cout << "Pausing MASK-RCNN." << std::endl;
                 continue;
             }
+            cv::imshow("orgin2",frame->rgb);
+            cv::waitKey(1);
             TICK("MaskRCNN");
             executeSequential(frame);
             TOCK("MaskRCNN");

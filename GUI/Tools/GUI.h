@@ -227,6 +227,7 @@ class GUI {
     trackInliers = new pangolin::Var<std::string>("ui.Inliers", "0");
     trackRes = new pangolin::Var<std::string>("ui.Residual", "0");
     logProgress = new pangolin::Var<std::string>("ui.Log", "0");
+    maskcount = new pangolin::Var<std::string>("ui.MaskCount", "0");
 
     if (showcaseMode) {
       pangolin::RegisterKeyPressCallback(' ', pangolin::SetVarFunctor<bool>("ui.Reset", true));
@@ -251,6 +252,7 @@ class GUI {
   }
 
   virtual ~GUI() {
+    delete maskcount;
     delete pause;
     delete reset;
     delete inPlot;
@@ -368,6 +370,7 @@ class GUI {
 
       bifoldEdgeThreshold = new pangolin::Var<float>("oi.Threshold", 0.3, 0, 0.4);
       bifoldWeightDistance = new pangolin::Var<float>("oi.Weight Distance", 150, 0, 500);
+      bifoldWeightBit = new pangolin::Var<float>("oi.Weight Bit", 0.001, 0, 0.01);
       bifoldWeightConvexity = new pangolin::Var<float>("oi.Weight Convexity", 2.8, 0, 12);
 
       bifoldMorphEdgeIterations = new pangolin::Var<int>("oi.Morph Edge Iterations", 0, 0, 10);
@@ -385,6 +388,7 @@ class GUI {
       delete bifoldEdgeThreshold;
       delete bifoldWeightConvexity;
       delete bifoldWeightDistance;
+      delete bifoldWeightBit;
       delete bifoldMorphEdgeIterations;
       delete bifoldMorphEdgeRadius;
       delete bifoldMorphMaskIterations;
@@ -705,7 +709,7 @@ class GUI {
       *drawRawCloud, *drawFilteredCloud, *drawNormals, *autoSettings, *drawDefGraph, *drawColors, *drawPoseLog, *drawLabelColors, *drawFxaa,
       *drawGlobalModel, *drawObjectModels, *drawUnstable, *drawPoints, *drawTimes, *drawFerns, *drawDeforms, *drawWindow, *drawBoundingBoxes;
   pangolin::Var<int>* gpuMem;
-  pangolin::Var<std::string> *totalPoints, *totalNodes, *totalFerns, *totalDefs, *totalFernDefs, *trackInliers, *trackRes, *logProgress;
+  pangolin::Var<std::string> *totalPoints, *totalNodes, *totalFerns, *totalDefs, *totalFernDefs, *trackInliers, *trackRes, *logProgress, *maskcount;
 
   pangolin::Var<float> *depthCutoff, *icpWeight, *outlierCoefficient;
 
@@ -729,6 +733,7 @@ class GUI {
   pangolin::Var<float> *bifoldEdgeThreshold;
   pangolin::Var<float> *bifoldWeightDistance;
   pangolin::Var<float> *bifoldWeightConvexity;
+  pangolin::Var<float> *bifoldWeightBit;
   pangolin::Var<float> *bifoldNonstaticThreshold;
   pangolin::Var<int> *bifoldMorphEdgeIterations;
   pangolin::Var<int> *bifoldMorphEdgeRadius;

@@ -17,6 +17,7 @@
  */
 
 #pragma once
+#include "globtest.h"
 
 #include "Utils/Macros.h"
 #include "Utils/RGBDOdometry.h"
@@ -231,6 +232,10 @@ class MaskFusion {
 
   // void setExportSegmentationDirectory(const std::string& path) { exportSegDir = path; }
 
+  const int& getMaskCount();
+  
+  
+  
   void setMfBilatSigmaDepth(float val);
   void setMfBilatSigmaColor(float val);
   void setMfBilatSigmaLocation(float val);
@@ -242,6 +247,7 @@ class MaskFusion {
   void setMfThreshold(float val);
   void setMfWeightDistance(float val);
   void setMfWeightConvexity(float val);
+  void setMfWeightBit(float val);
   void setMfNonstaticThreshold(float val);
 
   void setModelSpawnOffset(const unsigned& val);

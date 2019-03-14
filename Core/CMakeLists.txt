@@ -96,6 +96,7 @@ set(CUDA_ARCH_BIN "50 52 61" CACHE STRING "Specify 'real' GPU arch to build bina
 set(CUDA_ARCH_PTX "" CACHE STRING "Specify 'virtual' PTX arch to build PTX intermediate code for. Example: 1.0 1.2 or 10 12")
 
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR})
+
 include(CudaComputeTargetFlags.cmake)
 APPEND_TARGET_ARCH_FLAGS()
 

@@ -14,6 +14,9 @@ CMakeFiles
 .cproject
 *.orig
 *.autosave
+*.kdev4
+*.ipynb
+.ipynb*
 CMakeLists.txt.user
 
 Core/Segmentation/MaskRCNN/numpy

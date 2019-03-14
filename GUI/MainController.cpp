@@ -118,6 +118,7 @@ MainController::MainController(int argc, char* argv[])
     if(Parse::get().arg(argc, argv, "-v2", tmpString) > -1){
         Resolution::setResolution(512, 424);
         Intrinsics::setIntrinics(528, 528, 256, 212);
+       // Intrinsics::setIntrinics(284, 418, 253, 206);
     } else if(Parse::get().arg(argc, argv, "-tum3", tmpString) > -1) {
         Resolution::setResolution(640, 480);
         Intrinsics::setIntrinics(535.4, 539.2, 320.1, 247.6);
@@ -189,7 +190,7 @@ MainController::MainController(int argc, char* argv[])
         good = ((OpenNI2LiveReader*)logReader.get())->asus->ok();
     }
     // KinectV2
-    if(Parse::get().arg(argc, argv, "-v2", tmpString) > -1){
+    if(!logReaderReady && Parse::get().arg(argc, argv, "-v2", tmpString) > -1){
 #ifdef WITH_FREENECT2
         assert(!logReaderReady);
         logReader = std::make_unique<FreenectLiveReader>();
@@ -564,6 +565,8 @@ void MainController::run() {
             maskFusion->setMfThreshold(gui->bifoldEdgeThreshold->Get());
             maskFusion->setMfWeightConvexity(gui->bifoldWeightConvexity->Get());
             maskFusion->setMfWeightDistance(gui->bifoldWeightDistance->Get());
+            maskFusion->setMfWeightBit(gui->bifoldWeightBit->Get());
+            
             maskFusion->setMfNonstaticThreshold(gui->bifoldNonstaticThreshold->Get());
         }
 
@@ -942,6 +945,11 @@ void MainController::drawScene(DRAW_COLOR_TYPE backgroundColor, DRAW_COLOR_TYPE 
     strs5 << maskFusion->getTick() << "/" << logReader->getNumFrames();
 
     gui->logProgress->operator=(strs5.str());
+    
+    std::stringstream strs7;
+    strs7 << maskFusion->getMaskCount();
+    
+    gui->maskcount->operator=(strs7.str());
 
     std::stringstream strs6;
     strs6 << maskFusion->getFernDeforms();

@@ -19,6 +19,8 @@
 #include "MaskFusion.h"
 #include <thread>
 
+
+int g_maskcount =0;
 //#define LOG_TICKS
 
 MaskFusion::MaskFusion(int timeDelta, int countThresh, float errThresh, float covThresh, bool closeLoops,
@@ -939,7 +941,7 @@ void MaskFusion::setMfMorphMaskIterations(int val) { labelGenerator.getMfSegment
 void MaskFusion::setMfThreshold(float val) { labelGenerator.getMfSegmentationPerformer()->threshold = val; }
 void MaskFusion::setMfWeightConvexity(float val) { labelGenerator.getMfSegmentationPerformer()->weightConvexity = val; }
 void MaskFusion::setMfWeightDistance(float val) { labelGenerator.getMfSegmentationPerformer()->weightDistance = val; }
-
+void MaskFusion::setMfWeightBit(float val) { labelGenerator.getMfSegmentationPerformer()->weightBit = val; }
 void MaskFusion::setFernThresh(const float& val) { fernThresh = val; }
 
 void MaskFusion::setDepthCutoff(const float& val) { depthCutoff = val; }
@@ -963,3 +965,5 @@ const int& MaskFusion::getDeforms() { return deforms; }
 const int& MaskFusion::getFernDeforms() { return fernDeforms; }
 
 std::map<std::string, FeedbackBuffer*>& MaskFusion::getFeedbackBuffers() { return feedbackBuffers; }
+
+const int& MaskFusion::getMaskCount() { return g_maskcount; }
