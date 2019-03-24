@@ -39,7 +39,7 @@ MfSegmentation::MfSegmentation(int w, int h,
                                        std::shared_ptr<GPUTexture> textureDepthMetric,
                                        GlobalProjection* globalProjection,
                                        std::queue<FrameDataPointer>* queue) :
-    minMaskModelOverlap(0.05f), minMappedComponentSize(160), minNewMaskPixels(7000/*2000*/), REUSE_FILTERED_MAPS(true) {
+    minMaskModelOverlap(0.05f), minMappedComponentSize(160), minNewMaskPixels(2000/*7000 2000*/), REUSE_FILTERED_MAPS(true) {
 
     floatEdgeMap.create(h, w);
     floatBuffer.create(h, w);
@@ -359,7 +359,7 @@ SegmentationResult MfSegmentation::performSegmentation(std::list<std::shared_ptr
         }
         
         // Replace edges and persons with 255
-//    mapComponentToMask[0] = 255; // Edges
+//    mapComponentToMask[0] = 255; // Edges 
 
         // Group components that belong to the same mask
         for ( size_t i = 0; i < total; ++i )
@@ -482,6 +482,7 @@ SegmentationResult MfSegmentation::performSegmentation(std::list<std::shared_ptr
                 }
             }
 
+            //check if two mask are the same one,maskClassID is the real mask id.
             bool bestModelMatchesClass = (*result.modelData[bestModelIndex].modelListIterator)->getClassID()==maskClassID;
             if(bestOverlap < minMaskModelOverlap * maskComponentPixels[midx]){
                 bestModelIndex = 0;

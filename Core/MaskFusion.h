@@ -80,7 +80,7 @@ class MaskFusion {
        * This class contains all of the predicted renders
        * @return reference
        */
-  ModelProjection& getIndexMap();
+  ModelProjection* getIndexMap();
 
   /**
        * This class contains the surfel map
@@ -265,6 +265,7 @@ class MaskFusion {
   void setNewModelMaxRelativeSize(const float& val);
   void setEnableMultipleModels(bool val) { enableMultipleModels = val; }
   void setTrackAllModels(bool val) { trackAllModels = val; }
+  void setShareModels(bool val) { shareModels = val; }
   void setEnableSmartModelDelete(bool val) { enableSmartModelDelete = val; }
   // void setCfUnaryWeightErrorBackground(const float& val);
   // void setCfUnaryWeightConfBackground(const float& val);
@@ -313,6 +314,7 @@ class MaskFusion {
   // Here be dragons
  private:
   void spawnObjectModel();
+  void spawnShareModel(ModelPointer& m);
   bool redetectModels(const FrameData& frame, const SegmentationResult& segmentationResult);
   void moveNewModelToList();
   ModelListIterator inactivateModel(const ModelListIterator& it);
@@ -400,6 +402,7 @@ class MaskFusion {
 
   bool enableMultipleModels = true;
   bool trackAllModels = true;
+  bool shareModels =true;
   bool enableSmartModelDelete = true;
   bool enableRedetection = false;
   bool enableModelMerging = false;

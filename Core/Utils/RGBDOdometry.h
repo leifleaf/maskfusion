@@ -28,6 +28,9 @@
 #include <vector>
 #include <vector_types.h>
 
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+
 class RGBDOdometry {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW

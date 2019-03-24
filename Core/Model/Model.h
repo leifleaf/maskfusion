@@ -108,6 +108,7 @@ public:
     Model(unsigned char id, float confidenceThresh, bool enableFillIn = true, bool enableErrorRecording = true,
           bool enablePoseLogging = false, MatchingType matchingType = MatchingType::Drost,
           float maxDepth = std::numeric_limits<float>::max());  // TODO: Default disable
+    Model(unsigned char id,ModelPointer& m,Eigen::Matrix4f pose, bool enablePoseLogging);
     virtual ~Model();
 
     // ----- Functions ----- //
@@ -135,6 +136,7 @@ public:
     virtual Eigen::Matrix4f performTracking(bool frameToFrameRGB, bool rgbOnly, float icpWeight, bool pyramid, bool fastOdom, bool so3,
                                             float maxDepthProcessed, GPUTexture* rgb, int64_t logTimestamp, bool tryFillIn = false);
 
+    virtual Eigen::Matrix4f findSharingPose();
     // Compute fusion-weight based on velocity
     virtual float computeFusionWeight(float weightMultiplier) const;
 
@@ -156,11 +158,11 @@ public:
     void performFillIn(GPUTexture* rawRGB, GPUTexture* rawDepth, bool frameToFrameRGB, bool lost);
 
     inline void combinedPredict(float depthCutoff, int time, int maxTime, int timeDelta, ModelProjection::Prediction predictionType) {
-        indexMap.combinedPredict(getPose(), getModelBuffer(), depthCutoff, getConfidenceThreshold(), time, maxTime, timeDelta, predictionType);
+        indexMap->combinedPredict(getPose(), getModelBuffer(), depthCutoff, getConfidenceThreshold(), time, maxTime, timeDelta, predictionType);
     }
 
     inline void predictIndices(int time, float depthCutoff, int timeDelta) {
-        indexMap.predictIndices(getPose(), time, getModelBuffer(), depthCutoff, timeDelta);
+        indexMap->predictIndices(getPose(), time, getModelBuffer(), depthCutoff, timeDelta);
     }
 
     // ----- Drawing ---- //
@@ -183,6 +185,8 @@ public:
     inline void setConfidenceThreshold(float confThresh) { confidenceThreshold = confThresh; }
 
     inline void setMaxDepth(float d) { maxDepth = d; }
+    
+    inline float getMaxDepth(){return maxDepth;}
 
     // Get bounding-box that was last computed during 'renderPointCloud' in model-space
     inline const Eigen::AlignedBox3f& getBoundingBox() const { return lastBoundingBox; }
@@ -209,7 +213,7 @@ public:
     //    return indexMap.getUnaryConfTex()->downloadTexture();
     //}
 
-    inline cv::Mat downloadVertexConfTexture() { return indexMap.getSplatVertexConfTex()->downloadTexture(); }
+    inline cv::Mat downloadVertexConfTexture() { return indexMap->getSplatVertexConfTex()->downloadTexture(); }
 
     inline cv::Mat downloadICPErrorTexture() { return icpError->downloadTexture(); }
     inline cv::Mat downloadRGBErrorTexture() { return rgbError->downloadTexture(); }
@@ -217,10 +221,10 @@ public:
     inline GPUTexture* getICPErrorTexture() { return icpError.get(); }
     inline GPUTexture* getRGBErrorTexture() { return rgbError.get(); }
 
-    inline GPUTexture* getRGBProjection() { return indexMap.getSplatImageTex(); }
-    inline GPUTexture* getVertexConfProjection() { return indexMap.getSplatVertexConfTex(); }
-    inline GPUTexture* getNormalProjection() { return indexMap.getSplatNormalTex(); }
-    inline GPUTexture* getTimeProjection() { return indexMap.getSplatTimeTex(); }
+    inline GPUTexture* getRGBProjection() { return indexMap->getSplatImageTex(); }
+    inline GPUTexture* getVertexConfProjection() { return indexMap->getSplatVertexConfTex(); }
+    inline GPUTexture* getNormalProjection() { return indexMap->getSplatNormalTex(); }
+    inline GPUTexture* getTimeProjection() { return indexMap->getSplatTimeTex(); }
     // inline GPUTexture* getUnaryConfTexture() {
     //    return indexMap.getUnaryConfTex();
     //}
@@ -243,7 +247,7 @@ public:
     inline void setClassID(int id) { classID = id; }
 
     inline RGBDOdometry& getFrameOdometry() { return frameToModel; }
-    inline ModelProjection& getIndexMap() { return indexMap; }
+    inline ModelProjection* getIndexMap() { return indexMap; }
 
     inline unsigned getAge() const { return age; }
     inline void incrementAge() { age++; }
@@ -313,7 +317,7 @@ protected:
 
     const GPUSetup& gpu;
 
-    ModelProjection indexMap;
+    ModelProjection* indexMap;
     RGBDOdometry frameToModel;
 
 
@@ -322,4 +326,10 @@ protected:
 
     // Allows to detect inactive models in depth-map-region
     std::unique_ptr<IModelMatcher> modelMatcher;
+    
+    Model* orignModel;
+    
+    bool isSharingModel =false;
+    
+    
 };

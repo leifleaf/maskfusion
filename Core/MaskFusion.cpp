@@ -325,14 +325,29 @@ bool MaskFusion::processFrame(FrameDataPointer frame, const Eigen::Matrix4f* inP
 
                     // New model
                     std::cout << "Found new model." << std::endl;
+                    
+                    ModelList::iterator it = models.begin();
+                    for (unsigned i = 1; i < models.size(); i++) {
+                        ModelPointer& m = *++it;
+                        if(m->getClassID() == newModelData.classID && shareModels)
+                        {
+                            m->findSharingPose();
+                            spawnShareModel(m);
+                            spawnOffset=0;
+                            moveNewModelToList();
+                            break;
+                        }
+                    }
+                    
+                    if(spawnOffset !=0){
+                        spawnObjectModel();
+                        spawnOffset = 0;
 
-                    spawnObjectModel();
-                    spawnOffset = 0;
+                        newModel->setMaxDepth(getMaxDepth(newModelData));
+                        newModel->setClassID(newModelData.classID);
 
-                    newModel->setMaxDepth(getMaxDepth(newModelData));
-                    newModel->setClassID(newModelData.classID);
-
-                    moveNewModelToList();
+                        moveNewModelToList();
+                    }
                 }
 
                 // Set max-depth for all models
@@ -472,7 +487,7 @@ bool MaskFusion::processFrame(FrameDataPointer frame, const Eigen::Matrix4f* inP
 
             // WARNING initICP* must be called before initRGB*
             // RGBDOdometry& modelToModel = globalModel->getModelToModelOdometry();
-            ModelProjection& indexMap = globalModel->getIndexMap();
+            ModelProjection* indexMap = globalModel->getIndexMap();
             assert(0); // This function is not implemented anymore FIXME
             //modelToModel.initICPModel(indexMap.getOldVertexTex(), indexMap.getOldNormalTex(), maxDepthProcessed, globalModel->getPose());
             //modelToModel.initRGBModel(indexMap.getOldImageTex());
@@ -500,8 +515,8 @@ bool MaskFusion::processFrame(FrameDataPointer frame, const Eigen::Matrix4f* inP
             estPose.topLeftCorner(3, 3) = rot;
 
             if (covOk && modelToModel.lastICPCount > icpCountThresh && modelToModel.lastICPError < icpErrThresh) {
-                resize.vertex(indexMap.getSplatVertexConfTex(), consBuff);
-                resize.time(indexMap.getOldTimeTex(), timesBuff);
+                resize.vertex(indexMap->getSplatVertexConfTex(), consBuff);
+                resize.time(indexMap->getOldTimeTex(), timesBuff);
 
                 for (int i = 0; i < consBuff.cols; i++) {
                     for (int j = 0; j < consBuff.rows; j++) {
@@ -558,7 +573,7 @@ bool MaskFusion::processFrame(FrameDataPointer frame, const Eigen::Matrix4f* inP
             // points to update the timestamp's of, since a deformation means a second pose update
             // this loop
             if (rawGraph.size() > 0 && !fernAccepted) {
-                globalModel->getIndexMap().synthesizeDepth(globalModel->getPose(), globalModel->getModelBuffer(), maxDepthProcessed, initConfThresGlobal,
+                globalModel->getIndexMap()->synthesizeDepth(globalModel->getPose(), globalModel->getModelBuffer(), maxDepthProcessed, initConfThresGlobal,
                                                            tick, tick - timeDelta, std::numeric_limits<unsigned short>::max());
             }
 
@@ -566,6 +581,8 @@ bool MaskFusion::processFrame(FrameDataPointer frame, const Eigen::Matrix4f* inP
                 model->clean(tick, rawGraph, timeDelta, maxDepthProcessed, fernAccepted, textureDepthMetricFiltered.get(),
                              textureMask.get());
             }
+            
+            
         }
     }
 
@@ -680,6 +697,21 @@ void MaskFusion::spawnObjectModel() {
         getNextModelID(true);
     } else {
         newModel = std::make_shared<Model>(getNextModelID(true), initConfThresObject, false, true, enablePoseLogging, modelMatchingType);
+    }
+    newModel->getFrameOdometry().initFirstRGB(textureRGB.get());
+    newModel->makeStatic(globalModel->getPose());
+    //newModel->enableFiltering();
+    //newModel->makeNonStatic();
+}
+
+void MaskFusion::spawnShareModel(ModelPointer& m) {
+    assert(!newModel);
+    if (preallocatedModels.size()) {
+        newModel = preallocatedModels.front();
+        preallocatedModels.pop_front();
+        getNextModelID(true);
+    } else {
+        newModel = std::make_shared<Model>(getNextModelID(true), m,globalModel->getPose(),enablePoseLogging);
     }
     newModel->getFrameOdometry().initFirstRGB(textureRGB.get());
     newModel->makeStatic(globalModel->getPose());
@@ -883,7 +915,7 @@ void MaskFusion::exportPoses() {
 }
 
 // Sad times ahead
-ModelProjection& MaskFusion::getIndexMap() { return globalModel->getIndexMap(); }
+ModelProjection* MaskFusion::getIndexMap() { return globalModel->getIndexMap(); }
 
 ModelPointer MaskFusion::getBackgroundModel() { return globalModel; }
 

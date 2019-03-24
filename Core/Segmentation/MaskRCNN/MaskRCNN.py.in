@@ -71,7 +71,8 @@ COCO_MODEL_PATH = os.path.join(DATA_DIR, "mask_rcnn_coco.h5")
 
 # PARAMETERS
 SCORE_T = 0.55
-FILTER_CLASSES = ['teddy bear','person']
+#FILTER_CLASSES = ['teddy bear','person','umbrella','handbag','sports ball','bottle','bowl','cup','potted plant','tv','laptop','mouse','keyboard','microwave','refrigerator']
+FILTER_CLASSES = ['chair']
 SPECIAL_ASSIGNMENTS = {} #{'person': 255}
 SINGLE_INSTANCES = False
 OUTPUT_FRAMES = True
