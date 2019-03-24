@@ -976,6 +976,7 @@ Model::SurfelMap Model::downloadMap(int buffer) {
 void Model::performFillIn(GPUTexture* rawRGB, GPUTexture* rawDepth, bool frameToFrameRGB, bool lost) {
     if (fillIn) {
         TICK("FillIn");
+	//如果lost，就用但前的RGB-D代替模型的投影,为下一帧ICP准备图像。
         fillIn->vertex(getVertexConfProjection(), rawDepth, lost);
         fillIn->normal(getNormalProjection(), rawDepth, lost);
         fillIn->image(getRGBProjection(), rawRGB, lost || frameToFrameRGB);

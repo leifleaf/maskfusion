@@ -18,6 +18,7 @@
 
 //Central difference on floating point depth maps
 //Cam is //cx, cy, 1 / fx, 1 / fy
+//图像坐标->空间坐标
 vec3 getVertex(vec2 texCoord, float x, float y, vec4 cam, sampler2D depth)
 {
     float z = float(textureLod(depth, texCoord, 0.0));
