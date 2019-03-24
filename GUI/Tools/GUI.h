@@ -346,6 +346,7 @@ class GUI {
       enableMultiModel = new pangolin::Var<bool>("oi.Enable multiple models", true, true);
       enableSmartDelete = new pangolin::Var<bool>("oi.Delete deactivated", true, true);
       enableTrackAll = new pangolin::Var<bool>("oi.Track all models", false, true);
+      enableShareModel = new pangolin::Var<bool>("oi.Enable sharing models", true, true);
       minRelSizeNew = new pangolin::Var<float>("oi.Min-size new", 0.015, 0, 0.5);
       maxRelSizeNew = new pangolin::Var<float>("oi.Max-size new", 0.4, 0.3, 1);
       modelSpawnOffset = new pangolin::Var<unsigned>("oi.Model spawn offset", 22, 0, 100);
@@ -356,6 +357,7 @@ class GUI {
       delete enableMultiModel;
       delete enableSmartDelete;
       delete enableTrackAll;
+      delete enableShareModel;
       delete modelSpawnOffset;
       delete modelDeactivateCnt;
       delete minRelSizeNew;
@@ -705,7 +707,7 @@ class GUI {
 
   pangolin::Var<bool> *pause, *step, *skip, *savePoses, *saveView, *saveCloud,
       //* saveDepth,
-      *reset, *flipColors, *rgbOnly, *enableMultiModel, *enableSmartDelete, *enableTrackAll, *pyramid, *so3, *frameToFrameRGB, *fastOdom, *followPose,
+      *reset, *flipColors, *rgbOnly, *enableMultiModel, *enableSmartDelete, *enableTrackAll, *enableShareModel, *pyramid, *so3, *frameToFrameRGB, *fastOdom, *followPose,
       *drawRawCloud, *drawFilteredCloud, *drawNormals, *autoSettings, *drawDefGraph, *drawColors, *drawPoseLog, *drawLabelColors, *drawFxaa,
       *drawGlobalModel, *drawObjectModels, *drawUnstable, *drawPoints, *drawTimes, *drawFerns, *drawDeforms, *drawWindow, *drawBoundingBoxes;
   pangolin::Var<int>* gpuMem;

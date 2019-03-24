@@ -484,7 +484,7 @@ void MainController::run() {
                     framesToSkip = int(Stopwatch::getInstance().getTimings().at("Run") / (1000.f / 30.f));
 		    
                 }
-                Stopwatch::getInstance().printAll();
+              //  Stopwatch::getInstance().printAll();
             }
         } else if (pangolin::Pushed(*gui->skip)) {
             maskFusion->setTick(maskFusion->getTick() + 1);
@@ -527,6 +527,7 @@ void MainController::run() {
         maskFusion->setEnableMultipleModels(gui->enableMultiModel->Get());
         maskFusion->setEnableSmartModelDelete(gui->enableSmartDelete->Get());
         maskFusion->setTrackAllModels(gui->enableTrackAll->Get());
+        maskFusion->setShareModels(gui->enableShareModel->Get());
         maskFusion->setRgbOnly(gui->rgbOnly->Get());
         maskFusion->setPyramid(gui->pyramid->Get());
         maskFusion->setFastOdom(gui->fastOdom->Get());

@@ -112,6 +112,108 @@ const int Model::MAX_NODES = Model::NODE_TEXTURE_DIMENSION / 16;  // 16 floats p
 
 GPUTexture Model::deformationNodes = GPUTexture(NODE_TEXTURE_DIMENSION, 1, GL_LUMINANCE32F_ARB, GL_LUMINANCE, GL_FLOAT);
 
+Model::Model(unsigned char id,ModelPointer& m,Eigen::Matrix4f pose, bool enablePoseLogging)
+    :gpu(Model::GPUSetup::getInstance()),
+    pose(pose),
+      lastPose(Eigen::Matrix4f::Identity()),
+      target(0),
+      renderSource(1),
+      count(0),
+    icpError(std::make_unique<GPUTexture>(Resolution::getInstance().width(), Resolution::getInstance().height(), GL_R32F, GL_RED,
+                                              GL_FLOAT, true, true, cudaGraphicsRegisterFlagsSurfaceLoadStore)),
+    frameToModel(Resolution::getInstance().width(), Resolution::getInstance().height(), Intrinsics::getInstance().cx(),
+                   Intrinsics::getInstance().cy(), Intrinsics::getInstance().fx(), Intrinsics::getInstance().fy(), id){
+        
+    indexMap = m->getIndexMap();
+    confidenceThreshold = m->getConfidenceThreshold();
+    maxDepth = m->getMaxDepth();
+    
+
+
+    if (enablePoseLogging) poseLog.reserve(1000);
+
+    // Bounding-box buffer
+    glGenBuffers(1, &boundingboxBuffer);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, boundingboxBuffer);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLint) * 6, NULL, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); // unbind
+
+    float* vertices = new float[(id == 0) ? BUFFER_SIZE_GLOBAL : BUFFER_SIZE_OBJECT];
+    memset(&vertices[0], 0, (id == 0) ? BUFFER_SIZE_GLOBAL : BUFFER_SIZE_OBJECT);
+
+    glGenTransformFeedbacks(1, &vbos[0].stateObject);
+    glGenBuffers(1, &vbos[0].dataBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, vbos[0].dataBuffer);
+    glBufferData(GL_ARRAY_BUFFER, (id == 0) ? BUFFER_SIZE_GLOBAL : BUFFER_SIZE_OBJECT, &vertices[0], GL_STREAM_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    glGenTransformFeedbacks(1, &vbos[1].stateObject);
+    glGenBuffers(1, &vbos[1].dataBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, vbos[1].dataBuffer);
+    glBufferData(GL_ARRAY_BUFFER, (id == 0) ? BUFFER_SIZE_GLOBAL : BUFFER_SIZE_OBJECT, &vertices[0], GL_STREAM_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    delete[] vertices;
+
+    vertices = new float[Resolution::getInstance().numPixels() * Vertex::SIZE];
+
+    memset(&vertices[0], 0, Resolution::getInstance().numPixels() * Vertex::SIZE);
+
+    glGenTransformFeedbacks(1, &newUnstableBuffer.stateObject);
+    glGenBuffers(1, &newUnstableBuffer.dataBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, newUnstableBuffer.dataBuffer);
+    glBufferData(GL_ARRAY_BUFFER, Resolution::getInstance().numPixels() * Vertex::SIZE, &vertices[0], GL_STREAM_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    delete[] vertices;
+
+    std::vector<Eigen::Vector2f> uv;
+    for (int i = 0; i < Resolution::getInstance().width(); i++)
+        for (int j = 0; j < Resolution::getInstance().height(); j++)
+            uv.push_back(
+                        Eigen::Vector2f(float(i) / Resolution::getInstance().width() + 0.5f / Resolution::getInstance().width(),
+                                        float(j) / Resolution::getInstance().height() + 0.5f / Resolution::getInstance().height()));
+
+    uvSize = uv.size();
+
+    glGenBuffers(1, &uvo);
+    glBindBuffer(GL_ARRAY_BUFFER, uvo);
+    glBufferData(GL_ARRAY_BUFFER, uvSize * sizeof(Eigen::Vector2f), &uv[0], GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    gpu.initProgram->Bind();
+    glGenQueries(1, &countQuery);
+
+    // Empty both transform feedbacks
+    glEnable(GL_RASTERIZER_DISCARD);
+
+    glBindTransformFeedback(GL_TRANSFORM_FEEDBACK, vbos[0].stateObject);
+    glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, vbos[0].dataBuffer);
+
+    glBeginTransformFeedback(GL_POINTS);
+    glDrawArrays(GL_POINTS, 0, 0);  // RUN GPU-PASS
+    glEndTransformFeedback();
+
+    glBindTransformFeedback(GL_TRANSFORM_FEEDBACK, 0);
+
+    glBindTransformFeedback(GL_TRANSFORM_FEEDBACK, vbos[1].stateObject);
+    glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, vbos[1].dataBuffer);
+
+    glBeginTransformFeedback(GL_POINTS);
+
+    glDrawArrays(GL_POINTS, 0, 0);  // RUN GPU-PASS
+
+    glEndTransformFeedback();
+
+    glDisable(GL_RASTERIZER_DISCARD);
+
+    glBindTransformFeedback(GL_TRANSFORM_FEEDBACK, 0);
+
+    gpu.initProgram->Unbind();
+
+    std::cout << "Created model with max number of vertices: " << ((id == 0) ? MAX_VERTICES_GLOBAL : MAX_VERTICES_OBJECT) << std::endl;
+}
+
 Model::Model(unsigned char id, float confidenceThresh, bool enableFillIn, bool enableErrorRecording, bool enablePoseLogging,
              MatchingType matchingType, float maxDepthThesh)
     : pose(Eigen::Matrix4f::Identity()),
@@ -131,7 +233,9 @@ Model::Model(unsigned char id, float confidenceThresh, bool enableFillIn, bool e
       gpu(Model::GPUSetup::getInstance()),
       frameToModel(Resolution::getInstance().width(), Resolution::getInstance().height(), Intrinsics::getInstance().cx(),
                    Intrinsics::getInstance().cy(), Intrinsics::getInstance().fx(), Intrinsics::getInstance().fy(), id),
-      fillIn(enableFillIn ? std::make_unique<FillIn>() : nullptr) {
+      fillIn(enableFillIn ? std::make_unique<FillIn>() : nullptr) 
+      {
+          indexMap = new ModelProjection();
     switch (matchingType) {
     case MatchingType::Drost:
         // removed
@@ -436,7 +540,7 @@ Eigen::Matrix4f Model::performTracking(bool frameToFrameRGB, bool rgbOnly, float
 
     Eigen::Vector3f transObject = pose.topRightCorner(3, 1);
     Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rotObject = pose.topLeftCorner(3, 3);
-
+    
     Eigen::Matrix4f transform = getFrameOdometry().getIncrementalTransformation(transObject, rotObject, rgbOnly, icpWeight, pyramid, fastOdom, so3,
                                                                                 icpError->getCudaSurface(), rgbError->getCudaSurface());
     pose.topRightCorner(3, 1) = transObject;
@@ -444,6 +548,12 @@ Eigen::Matrix4f Model::performTracking(bool frameToFrameRGB, bool rgbOnly, float
 
     TOCK("odom - Model: " + std::to_string(id));
     return transform;
+}
+
+Eigen::Matrix4f Model::findSharingPose(){
+    //generate orign img
+    
+    
 }
 
 float Model::computeFusionWeight(float weightMultiplier) const {
@@ -543,16 +653,16 @@ void Model::fuse(const int& time, GPUTexture* rgb, GPUTexture* mask, GPUTexture*
     glBindTexture(GL_TEXTURE_2D, depthFiltered->texture->tid);
 
     glActiveTexture(GL_TEXTURE3);
-    glBindTexture(GL_TEXTURE_2D, indexMap.getSparseIndexTex()->texture->tid);
+    glBindTexture(GL_TEXTURE_2D, indexMap->getSparseIndexTex()->texture->tid);
 
     glActiveTexture(GL_TEXTURE4);
-    glBindTexture(GL_TEXTURE_2D, indexMap.getSparseVertConfTex()->texture->tid);
+    glBindTexture(GL_TEXTURE_2D, indexMap->getSparseVertConfTex()->texture->tid);
 
     glActiveTexture(GL_TEXTURE5);
-    glBindTexture(GL_TEXTURE_2D, indexMap.getSparseColorTimeTex()->texture->tid);
+    glBindTexture(GL_TEXTURE_2D, indexMap->getSparseColorTimeTex()->texture->tid);
 
     glActiveTexture(GL_TEXTURE6);
-    glBindTexture(GL_TEXTURE_2D, indexMap.getSparseNormalRadTex()->texture->tid);
+    glBindTexture(GL_TEXTURE_2D, indexMap->getSparseNormalRadTex()->texture->tid);
 
     glActiveTexture(GL_TEXTURE7);
     glBindTexture(GL_TEXTURE_2D, mask->texture->tid);
@@ -706,22 +816,22 @@ void Model::clean(  // FIXME what happens with object models and ferns here?
     glBeginTransformFeedback(GL_POINTS);
 
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, indexMap.getSparseIndexTex()->texture->tid);
+    glBindTexture(GL_TEXTURE_2D, indexMap->getSparseIndexTex()->texture->tid);
 
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, indexMap.getSparseVertConfTex()->texture->tid);
+    glBindTexture(GL_TEXTURE_2D, indexMap->getSparseVertConfTex()->texture->tid);
 
     glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_2D, indexMap.getSparseColorTimeTex()->texture->tid);
+    glBindTexture(GL_TEXTURE_2D, indexMap->getSparseColorTimeTex()->texture->tid);
 
     glActiveTexture(GL_TEXTURE3);
-    glBindTexture(GL_TEXTURE_2D, indexMap.getSparseNormalRadTex()->texture->tid);
+    glBindTexture(GL_TEXTURE_2D, indexMap->getSparseNormalRadTex()->texture->tid);
 
     glActiveTexture(GL_TEXTURE4);
     glBindTexture(GL_TEXTURE_2D, deformationNodes.texture->tid);
 
     glActiveTexture(GL_TEXTURE5);
-    glBindTexture(GL_TEXTURE_2D, indexMap.getDepthTex()->texture->tid);
+    glBindTexture(GL_TEXTURE_2D, indexMap->getDepthTex()->texture->tid);
 
     glActiveTexture(GL_TEXTURE6);
     glBindTexture(GL_TEXTURE_2D, depthFiltered->texture->tid);
@@ -819,22 +929,22 @@ void Model::eraseErrorGeometry(GPUTexture* depthFiltered) {
     glBeginTransformFeedback(GL_POINTS);
 
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, indexMap.getSparseIndexTex()->texture->tid);
+    glBindTexture(GL_TEXTURE_2D, indexMap->getSparseIndexTex()->texture->tid);
 
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, indexMap.getSparseVertConfTex()->texture->tid);
+    glBindTexture(GL_TEXTURE_2D, indexMap->getSparseVertConfTex()->texture->tid);
 
     glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_2D, indexMap.getSparseColorTimeTex()->texture->tid);
+    glBindTexture(GL_TEXTURE_2D, indexMap->getSparseColorTimeTex()->texture->tid);
 
     glActiveTexture(GL_TEXTURE3);
-    glBindTexture(GL_TEXTURE_2D, indexMap.getSparseNormalRadTex()->texture->tid);
+    glBindTexture(GL_TEXTURE_2D, indexMap->getSparseNormalRadTex()->texture->tid);
 
     glActiveTexture(GL_TEXTURE4);
     glBindTexture(GL_TEXTURE_2D, icpError->texture->tid);
 
     glActiveTexture(GL_TEXTURE5);
-    glBindTexture(GL_TEXTURE_2D, indexMap.getDepthTex()->texture->tid);
+    glBindTexture(GL_TEXTURE_2D, indexMap->getDepthTex()->texture->tid);
 
     glActiveTexture(GL_TEXTURE6);
     glBindTexture(GL_TEXTURE_2D, depthFiltered->texture->tid);

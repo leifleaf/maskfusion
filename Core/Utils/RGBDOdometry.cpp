@@ -235,6 +235,14 @@ Eigen::Matrix4f RGBDOdometry::getIncrementalTransformation(Eigen::Vector3f& tran
                                                              const cudaSurfaceObject_t& rgbErrorSurface) {
     bool icp = !rgbOnly && icpWeight > 0;
     bool rgb = rgbOnly || icpWeight < 100;
+    
+    if(maskID!= 0)
+    {
+        cv::Mat tempimg;
+        vmaps_g_prev_[0].download(tempimg.data,vmaps_g_prev_[0].cols());
+        cv::imshow("test",tempimg);
+        cv::waitKey(1);
+    }
 
     Eigen::Matrix<float, 3, 3, Eigen::RowMajor> Rprev = rot;
     Eigen::Vector3f tprev = trans;
