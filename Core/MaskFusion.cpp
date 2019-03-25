@@ -332,7 +332,9 @@ bool MaskFusion::processFrame(FrameDataPointer frame, const Eigen::Matrix4f* inP
                         if(m->getClassID() == newModelData.classID && shareModels)
                         {
                           Eigen::Matrix4f tmpPose;  
-			  tmpPose = m->findSharingPose();
+			  tmpPose = m->findSharingPose(maxDepthProcessed,
+						       tick, timeDelta , textureRGB.get(),
+						      rgbOnly, icpWeight, pyramid,fastOdom, so3);
 			    if(m->getFrameOdometry().lastICPError <1e-04)
 			    {
 			      spawnShareModel(m,tmpPose);

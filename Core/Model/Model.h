@@ -136,7 +136,8 @@ public:
     virtual Eigen::Matrix4f performTracking(bool frameToFrameRGB, bool rgbOnly, float icpWeight, bool pyramid, bool fastOdom, bool so3,
                                             float maxDepthProcessed, GPUTexture* rgb, int64_t logTimestamp, bool tryFillIn = false);
 
-    virtual Eigen::Matrix4f findSharingPose();
+    virtual Eigen::Matrix4f findSharingPose(float depthCutoff, int time, int timeDelta,GPUTexture* rgb,
+				       bool rgbOnly, float icpWeight, bool pyramid, bool fastOdom, bool so3);
     // Compute fusion-weight based on velocity
     virtual float computeFusionWeight(float weightMultiplier) const;
 
