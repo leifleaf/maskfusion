@@ -314,7 +314,7 @@ class MaskFusion {
   // Here be dragons
  private:
   void spawnObjectModel();
-  void spawnShareModel(ModelPointer& m);
+  void spawnShareModel(ModelPointer& m,Eigen::Matrix4f& transPose);
   bool redetectModels(const FrameData& frame, const SegmentationResult& segmentationResult);
   void moveNewModelToList();
   ModelListIterator inactivateModel(const ModelListIterator& it);

@@ -330,6 +330,8 @@ protected:
     Model* orignModel;
     
     bool isSharingModel =false;
+    Eigen::Matrix4f transPose;
+    
     
     
 };

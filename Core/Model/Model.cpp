@@ -114,11 +114,12 @@ GPUTexture Model::deformationNodes = GPUTexture(NODE_TEXTURE_DIMENSION, 1, GL_LU
 
 Model::Model(unsigned char id,ModelPointer& m,Eigen::Matrix4f pose, bool enablePoseLogging)
     :gpu(Model::GPUSetup::getInstance()),
-    pose(pose),
-      lastPose(Eigen::Matrix4f::Identity()),
-      target(0),
-      renderSource(1),
-      count(0),
+    pose(Eigen::Matrix4f::Identity()),
+   // transPose(transPose),
+    lastPose(Eigen::Matrix4f::Identity()),
+    target(0),
+    renderSource(1),
+    count(0),
     icpError(std::make_unique<GPUTexture>(Resolution::getInstance().width(), Resolution::getInstance().height(), GL_R32F, GL_RED,
                                               GL_FLOAT, true, true, cudaGraphicsRegisterFlagsSurfaceLoadStore)),
     frameToModel(Resolution::getInstance().width(), Resolution::getInstance().height(), Intrinsics::getInstance().cx(),
@@ -550,9 +551,27 @@ Eigen::Matrix4f Model::performTracking(bool frameToFrameRGB, bool rgbOnly, float
     return transform;
 }
 
-Eigen::Matrix4f Model::findSharingPose(){
+Eigen::Matrix4f Model::findSharingPose(float depthCutoff, int time, int timeDelta,GPUTexture* rgb,
+				       bool rgbOnly, float icpWeight, bool pyramid, bool fastOdom, bool so3){
     //generate orign img
+    Eigen::Matrix4f tmppose = Eigen::Matrix4f::Identity();
+    indexMap->combinedPredict(tmppose, getModelBuffer(), depthCutoff, getConfidenceThreshold(), 0, time, timeDelta, ModelProjection::SHARE);
     
+    frameToModel.initICPModel(indexMap->getShareVertexTex(), indexMap->getShareNormalTex(), depthCutoff, getPose());
+    frameToModel.initRGBModel(indexMap->getShareImageTex());
+    frameToModel.initICP(&gpu.vertex_map_tmp, &gpu.normal_map_tmp, &gpu.mask_tmp);
+    frameToModel.initRGB(rgb);
+    
+    Eigen::Vector3f transObject = tmppose.topRightCorner(3, 1);
+    Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rotObject = tmppose.topLeftCorner(3, 3);
+    
+    Eigen::Matrix4f transform = getFrameOdometry().getIncrementalTransformation(transObject, rotObject, rgbOnly, icpWeight, pyramid, fastOdom, so3,
+                                                                                icpError->getCudaSurface(), rgbError->getCudaSurface());
+    
+    tmppose.topRightCorner(3, 1) = transObject;
+    tmppose.topLeftCorner(3, 3) = rotObject;
+    
+    return tmppose;
     
 }
 

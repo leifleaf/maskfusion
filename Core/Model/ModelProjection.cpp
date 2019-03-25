@@ -93,6 +93,12 @@ ModelProjection::ModelProjection()
   oldFrameBuffer.AttachColour(*oldVertexTexture.texture);
   oldFrameBuffer.AttachColour(*oldNormalTexture.texture);
   oldFrameBuffer.AttachColour(*oldTimeTexture.texture);
+  
+  shareFrameBuffer.AttachDepth(shareRenderBuffer);
+  shareFrameBuffer.AttachColour(*shareImageTexture.texture);
+  shareFrameBuffer.AttachColour(*shareVertexTexture.texture);
+  shareFrameBuffer.AttachColour(*shareNormalTexture.texture);
+  shareFrameBuffer.AttachColour(*shareTimeTexture.texture);
 }
 
 ModelProjection::~ModelProjection() {}
@@ -195,6 +201,8 @@ void ModelProjection::combinedPredict(const Eigen::Matrix4f& pose, const OutputB
     combinedFrameBuffer.Bind();
   } else if (predictionType == ModelProjection::INACTIVE) {
     oldFrameBuffer.Bind();
+  } else if (predictionType == ModelProjection::SHARE){
+    shareFrameBuffer.Bind();
   } else {
     assert(false);
   }
@@ -253,6 +261,8 @@ void ModelProjection::combinedPredict(const Eigen::Matrix4f& pose, const OutputB
     combinedFrameBuffer.Unbind();
   } else if (predictionType == ModelProjection::INACTIVE) {
     oldFrameBuffer.Unbind();
+  } else if (predictionType == ModelProjection::SHARE){
+    shareFrameBuffer.Unbind();
   } else {
     assert(false);
   }

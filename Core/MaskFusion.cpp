@@ -331,11 +331,15 @@ bool MaskFusion::processFrame(FrameDataPointer frame, const Eigen::Matrix4f* inP
                         ModelPointer& m = *++it;
                         if(m->getClassID() == newModelData.classID && shareModels)
                         {
-                            m->findSharingPose();
-                            spawnShareModel(m);
-                            spawnOffset=0;
-                            moveNewModelToList();
-                            break;
+                          Eigen::Matrix4f tmpPose;  
+			  tmpPose = m->findSharingPose();
+			    if(m->getFrameOdometry().lastICPError <1e-04)
+			    {
+			      spawnShareModel(m,tmpPose);
+			      spawnOffset=0;
+			      moveNewModelToList();
+			      break;
+			    }
                         }
                     }
                     
@@ -704,14 +708,14 @@ void MaskFusion::spawnObjectModel() {
     //newModel->makeNonStatic();
 }
 
-void MaskFusion::spawnShareModel(ModelPointer& m) {
+void MaskFusion::spawnShareModel(ModelPointer& m,Eigen::Matrix4f& transPose) {
     assert(!newModel);
     if (preallocatedModels.size()) {
         newModel = preallocatedModels.front();
         preallocatedModels.pop_front();
         getNextModelID(true);
     } else {
-        newModel = std::make_shared<Model>(getNextModelID(true), m,globalModel->getPose(),enablePoseLogging);
+        newModel = std::make_shared<Model>(getNextModelID(true), m,transPose ,enablePoseLogging);
     }
     newModel->getFrameOdometry().initFirstRGB(textureRGB.get());
     newModel->makeStatic(globalModel->getPose());

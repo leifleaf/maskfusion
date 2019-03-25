@@ -38,7 +38,7 @@ class ModelProjection {
 
   void renderDepth(const float depthCutoff);
 
-  enum Prediction { ACTIVE, INACTIVE };
+  enum Prediction { ACTIVE, INACTIVE, SHARE};
 
   // Project: Vertex+Confidence, RGB, Normals, time using splats
   void combinedPredict(const Eigen::Matrix4f& pose, const OutputBuffer& model, const float depthCutoff, const float confThreshold,
@@ -76,6 +76,14 @@ class ModelProjection {
   GPUTexture* getOldNormalTex() { return &oldNormalTexture; }
 
   GPUTexture* getOldTimeTex() { return &oldTimeTexture; }
+  
+  GPUTexture* getShareImageTex() { return &shareImageTexture; }
+
+  GPUTexture* getShareVertexTex() { return &shareVertexTexture; }
+
+  GPUTexture* getShareNormalTex() { return &shareNormalTexture; }
+
+  GPUTexture* getShareTimeTex() { return &shareTimeTexture; }
 
   static const int FACTOR;
 
@@ -112,4 +120,11 @@ class ModelProjection {
   GPUTexture oldVertexTexture;
   GPUTexture oldNormalTexture;
   GPUTexture oldTimeTexture;
+  
+  pangolin::GlFramebuffer shareFrameBuffer;
+  pangolin::GlRenderBuffer shareRenderBuffer;
+  GPUTexture shareImageTexture;
+  GPUTexture shareVertexTexture;
+  GPUTexture shareNormalTexture;
+  GPUTexture shareTimeTexture;
 };
